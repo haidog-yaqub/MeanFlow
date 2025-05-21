@@ -14,7 +14,6 @@ if __name__ == '__main__':
     n_steps = 200000
     device = "cuda" if torch.cuda.is_available() else "cpu"
     batch_size = 48
-    cfg = False
     os.makedirs('images', exist_ok=True)
     accelerator = Accelerator(mixed_precision='fp16')
 
@@ -77,7 +76,7 @@ if __name__ == '__main__':
             x = data[0].to(accelerator.device)
             c = data[1].to(accelerator.device)
 
-            loss, mse_val = meanflow.loss(model, x, c, cfg=cfg)
+            loss, mse_val = meanflow.loss(model, x, c)
 
             accelerator.backward(loss)
             optimizer.step()
