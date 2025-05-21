@@ -17,3 +17,6 @@
 ## Known Issues (PyTorch)
 - `jvp` is incompatible with Flash Attention and likely also with Triton, Mamba, and similar libraries.  
 - `jvp` significantly increases GPU memory usage, even when using `torch.utils.checkpoint`.
+
+## 🌟 Like This Project?
+If you find this repo helpful or interesting, consider dropping a ⭐ — it really helps and means a lot!
