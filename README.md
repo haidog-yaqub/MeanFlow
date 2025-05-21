@@ -15,5 +15,5 @@
 - [ ] Investigate applying MeanFlow to pre-trained models (e.g., via ControlNet or LoRA)
 
 ## Known Issues (PyTorch)
-- `jvp` is incompatible with Flash Attention; likely also incompatible with Triton, Mamba, etc.
-- `jvp` requires significantly more GPU memory
+- `jvp` is incompatible with Flash Attention and likely also with Triton, Mamba, and similar libraries.  
+- `jvp` significantly increases GPU memory usage, even when using `torch.utils.checkpoint`.
