@@ -27,7 +27,8 @@ def adaptive_l2_loss(error, gamma=0.5, c=1e-3):
     Returns:
         Scalar loss
     """
-    delta_sq = torch.sum(error ** 2, dim=tuple(range(1, error.ndim)))
+    delta_sq = torch.mean(error ** 2, dim=tuple(range(1, error.ndim)))    
+    # delta_sq = torch.sum(error ** 2, dim=tuple(range(1, error.ndim)))
     p = 1.0 - gamma
     w = 1.0 / (delta_sq + c).pow(p)
     loss = delta_sq
