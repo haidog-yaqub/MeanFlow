@@ -8,11 +8,12 @@
 
 ## TODO
 - [x] Implement basic training and inference
+- [x] Enable multi-GPU training via 🤗 Accelerate
 - [ ] Add support for Classifier-Free Guidance (CFG) [WIP]
-- [ ] Integrate support for latent image representations
-- [ ] Hugging Face Space Demo
-- [ ] Extend support to other modalities (e.g. audio, speech)
-- [ ] Investigate applying MeanFlow to pre-trained models (e.g., via ControlNet or LoRA)
+- [ ] Integrate latent image representation support
+- [ ] Deploy interactive demo on Hugging Face Spaces
+- [ ] Extend to additional modalities (e.g., audio, speech)
+- [ ] Explore integration with pre-trained models (e.g., ControlNet, LoRA)
 
 ## Known Issues (PyTorch)
 - `jvp` is incompatible with Flash Attention and likely also with Triton, Mamba, and similar libraries.  
