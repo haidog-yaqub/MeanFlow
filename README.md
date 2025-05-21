@@ -8,6 +8,7 @@ It builds upon the following projects: [Just-a-DiT](https://github.com/ArchiMick
 - [x] Implement basic training and inference
 - [ ] Add support for Classifier-Free Guidance (CFG) [WIP]
 - [ ] Integrate support for latent image representations
+- [ ] Hugging Face Space Demo
 - [ ] Extend support to other modalities (e.g. audio, speech)
 - [ ] Investigate applying MeanFlow to pre-trained models (e.g., via ControlNet or LoRA)
 
