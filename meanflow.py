@@ -21,16 +21,16 @@ def adaptive_l2_loss(error, gamma=0.5, c=1e-3):
     """
     Adaptive L2 loss: sg(w) * ||Δ||_2^2, where w = 1 / (||Δ||^2 + c)^p, p = 1 - γ
     Args:
-        error: Tensor of shape (batch, dim)
+        error: Tensor of shape (B, C, W, H)
         gamma: Power used in original ||Δ||^{2γ} loss
         c: Small constant for stability
     Returns:
         Scalar loss
     """
-    delta_sq = torch.sum(error ** 2, dim=-1)  # ||Δ||^2 per sample
+    delta_sq = torch.sum(error ** 2, dim=tuple(range(1, error.ndim)))
     p = 1.0 - gamma
     w = 1.0 / (delta_sq + c).pow(p)
-    loss = delta_sq  # ||Δ||^2
+    loss = delta_sq
     return (stopgrad(w) * loss).mean()
 
 
