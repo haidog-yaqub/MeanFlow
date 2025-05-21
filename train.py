@@ -56,7 +56,9 @@ if __name__ == '__main__':
     meanflow = MeanFlow(channels=3,
                         image_size=32,
                         num_classes=10,
-                        flow_ratio=0.50,)
+                        flow_ratio=0.50,
+                        cfg_ratio=None,
+                        cfg_scale=None,)
 
     model, optimizer, train_dataloader = accelerator.prepare(model, optimizer, train_dataloader)
 

@@ -41,6 +41,8 @@ class MeanFlow:
         image_size=32,
         num_classes=10,
         flow_ratio=0.50,
+        cfg_ratio=0.20,
+        cfg_scale=2.0,
     ):
         super().__init__()
         self.channels = channels
@@ -48,8 +50,10 @@ class MeanFlow:
         self.num_classes = num_classes
         self.use_cond = num_classes is not None
         self.flow_ratio = flow_ratio
+        self.cfg_ratio = cfg_ratio
+        self.w = cfg_scale
 
-    def loss(self, model, x, c=None, cfg=None):
+    def loss(self, model, x, c=None):
         batch_size = x.shape[0]
         device = x.device
 
@@ -71,10 +75,13 @@ class MeanFlow:
         z = (1 - t_) * x + t_ * e
         v = e - x
 
-        if cfg is not None:
+        if self.w is not None:
+            uncond = torch.ones_like(c) * self.num_classes
             with torch.no_grad():
-                u_t = model(z, t, t, c)
-            v_hat = cfg * v + (1 - cfg) * u_t
+                u_t = model(z, t, t, uncond)
+            v_hat = self.w * v + (1 - self.w) * u_t
+            cfg_mask = torch.rand_like(c.float()) < self.cfg_ratio
+            c = torch.where(cfg_mask, uncond, c)
         else:
             v_hat = v
 
