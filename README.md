@@ -15,7 +15,7 @@
 
 **CIFAR-10** -- 200k training steps, 1-step CFG (w=2.0) sample result:
 
-![CIFAR-10-cfg](assets/cfg_200k_cfg2.png.png)
+![CIFAR-10-cfg](assets/cfg_200k_cfg2.png)
 
 ## TODO
 - [x] Implement basic training and inference
