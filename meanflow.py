@@ -80,10 +80,14 @@ class MeanFlow:
             with torch.no_grad():
                 u_t = model(z, t, t, uncond)
             v_hat = self.w * v + (1 - self.w) * u_t
-            cfg_mask = torch.rand_like(c.float()) < self.cfg_ratio
-            c = torch.where(cfg_mask, uncond, c)
         else:
             v_hat = v
+
+        cfg_mask = torch.rand_like(c.float()) < self.cfg_ratio
+        c = torch.where(cfg_mask, uncond, c)
+
+        # cfg_mask = rearrange(r, "b -> b 1 1 1").bool()
+        # v_hat = torch.where(cfg_mask, v, v_hat)
 
         model_partial = partial(model, y=c)
         u, dudt = torch.autograd.functional.jvp(
@@ -96,7 +100,7 @@ class MeanFlow:
 
         # u = model(z, t, r)
         # u_tgt = v
-        u_tgt = v - (t_ - r_) * dudt
+        u_tgt = v_hat - (t_ - r_) * dudt
 
         error = u - stopgrad(u_tgt)
         loss = adaptive_l2_loss(error)
