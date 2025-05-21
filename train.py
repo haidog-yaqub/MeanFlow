@@ -14,21 +14,22 @@ if __name__ == '__main__':
     n_steps = 200000
     device = "cuda" if torch.cuda.is_available() else "cpu"
     batch_size = 48
+    cfg = False
     os.makedirs('images', exist_ok=True)
     accelerator = Accelerator(mixed_precision='fp16')
 
-    # dataset = torchvision.datasets.CIFAR10(
-    #     root="cifar",
-    #     train=True,
-    #     download=True,
-    #     transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]),
-    # )
-    dataset = torchvision.datasets.MNIST(
-        root="mnist",
+    dataset = torchvision.datasets.CIFAR10(
+        root="cifar",
         train=True,
         download=True,
-        transform=T.Compose([T.Resize((32, 32)), T.ToTensor(),]),
+        transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]),
     )
+    # dataset = torchvision.datasets.MNIST(
+    #     root="mnist",
+    #     train=True,
+    #     download=True,
+    #     transform=T.Compose([T.Resize((32, 32)), T.ToTensor(),]),
+    # )
 
     def cycle(iterable):
         while True:
@@ -71,7 +72,7 @@ if __name__ == '__main__':
             x = data[0].to(accelerator.device)
             c = data[1].to(accelerator.device)
 
-            loss, mse_val = meanflow.loss(model, x, c)
+            loss, mse_val = meanflow.loss(model, x, c, cfg=cfg)
 
             accelerator.backward(loss)
             optimizer.step()

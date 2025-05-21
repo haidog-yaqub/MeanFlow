@@ -71,12 +71,19 @@ class MeanFlow:
         z = (1 - t_) * x + t_ * e
         v = e - x
 
+        if cfg is not None:
+            with torch.no_grad():
+                u_t = model(z, t, t, c)
+            v_hat = cfg * v + (1 - cfg) * u_t
+        else:
+            v_hat = v
+
         model_partial = partial(model, y=c)
         u, dudt = torch.autograd.functional.jvp(
             lambda z, t, r: model_partial(z, t, r),
             # model,
             (z, t, r),
-            (v, torch.ones_like(t), torch.zeros_like(r)),
+            (v_hat, torch.ones_like(t), torch.zeros_like(r)),
             create_graph=True
         )
 
