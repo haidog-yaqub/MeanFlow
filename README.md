@@ -4,6 +4,10 @@
 
 It builds upon the following projects: [Just-a-DiT](https://github.com/ArchiMickey/Just-a-DiT) and [EzAudio](https://github.com/haidog-yaqub/EzAudio)
 
+## Examples
+**MNIST** — After 10k training steps, single-step sample result:
+![MNIST 10k steps](assets/mnist_10k.png)
+
 ## TODO
 - [x] Implement basic training and inference
 - [ ] Add support for Classifier-Free Guidance (CFG) [WIP]
