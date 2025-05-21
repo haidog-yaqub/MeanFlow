@@ -44,7 +44,7 @@ if __name__ == '__main__':
     model = MFDiT(
         input_size=32,
         patch_size=2,
-        in_channels=1,
+        in_channels=3,
         dim=384,
         depth=12,
         num_heads=6,
@@ -53,7 +53,10 @@ if __name__ == '__main__':
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=0.0)
 
-    meanflow = MeanFlow()
+    meanflow = MeanFlow(channels=3,
+                        image_size=32,
+                        num_classes=10,
+                        flow_ratio=0.50,)
 
     model, optimizer, train_dataloader = accelerator.prepare(model, optimizer, train_dataloader)
 
