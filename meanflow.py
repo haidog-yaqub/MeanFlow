@@ -76,8 +76,8 @@ class MeanFlow:
         z = (1 - t_) * x + t_ * e
         v = e - x
 
+        uncond = torch.ones_like(c) * self.num_classes
         if self.w is not None:
-            uncond = torch.ones_like(c) * self.num_classes
             with torch.no_grad():
                 u_t = model(z, t, t, uncond)
             v_hat = self.w * v + (1 - self.w) * u_t
