@@ -1,4 +1,4 @@
-<img src="assets/meanflow.gif" width="2000">
+<img src="assets/meanflow.gif">
 
 # MeanFlow
 
