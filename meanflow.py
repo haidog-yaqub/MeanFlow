@@ -27,11 +27,10 @@ def adaptive_l2_loss(error, gamma=0.5, c=1e-3):
     Returns:
         Scalar loss
     """
-    delta_sq = torch.mean(error ** 2, dim=tuple(range(1, error.ndim)))    
-    # delta_sq = torch.sum(error ** 2, dim=tuple(range(1, error.ndim)))
+    delta_sq = torch.mean(error ** 2, dim=(1, 2, 3), keepdim=False)
     p = 1.0 - gamma
     w = 1.0 / (delta_sq + c).pow(p)
-    loss = delta_sq
+    loss = delta_sq  # ||Δ||^2
     return (stopgrad(w) * loss).mean()
 
 
@@ -44,6 +43,7 @@ class MeanFlow:
         flow_ratio=0.50,
         cfg_ratio=0.20,
         cfg_scale=2.0,
+        cfg_uncond='u'
     ):
         super().__init__()
         self.channels = channels
@@ -53,6 +53,7 @@ class MeanFlow:
         self.flow_ratio = flow_ratio
         self.cfg_ratio = cfg_ratio
         self.w = cfg_scale
+        self.cfg_uncond = cfg_uncond
 
     def loss(self, model, x, c=None):
         batch_size = x.shape[0]
@@ -76,8 +77,8 @@ class MeanFlow:
         z = (1 - t_) * x + t_ * e
         v = e - x
 
-        uncond = torch.ones_like(c) * self.num_classes
         if self.w is not None:
+            uncond = torch.ones_like(c) * self.num_classes
             with torch.no_grad():
                 u_t = model(z, t, t, uncond)
             v_hat = self.w * v + (1 - self.w) * u_t
@@ -87,8 +88,10 @@ class MeanFlow:
         cfg_mask = torch.rand_like(c.float()) < self.cfg_ratio
         c = torch.where(cfg_mask, uncond, c)
 
-        # cfg_mask = rearrange(r, "b -> b 1 1 1").bool()
-        # v_hat = torch.where(cfg_mask, v, v_hat)
+        if self.cfg_uncond == 'v':
+            # as v = wv - (1-w)v = wv - (1-w)u in the unconditional case, should we directly use v instead?
+            cfg_mask = rearrange(r, "b -> b 1 1 1").bool()
+            v_hat = torch.where(cfg_mask, v, v_hat)
 
         model_partial = partial(model, y=c)
         u, dudt = torch.autograd.functional.jvp(
