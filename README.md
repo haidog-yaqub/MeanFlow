@@ -1,5 +1,5 @@
 # MeanFlow
-<img src="assets/meanflow.gif">
+<img src="assets/meanflow.gif" width="2000" height="500">
 
 
 😈 This repository offers an **unofficial PyTorch implementation** of the paper [_Mean Flows for One-step Generative Modeling_](https://arxiv.org/pdf/2505.13447), building upon [Just-a-DiT](https://github.com/ArchiMickey/Just-a-DiT) and [EzAudio](https://github.com/haidog-yaqub/EzAudio).
