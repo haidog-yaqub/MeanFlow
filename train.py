@@ -56,8 +56,11 @@ if __name__ == '__main__':
                         image_size=32,
                         num_classes=10,
                         flow_ratio=0.50,
-                        cfg_ratio=None,
-                        cfg_scale=None,)
+                        time_dist=['lognorm', -0.4, 1.0],
+                        cfg_ratio=0.10,
+                        cfg_scale=2.0,
+                        # experimental
+                        cfg_uncond='u')
 
     model, optimizer, train_dataloader = accelerator.prepare(model, optimizer, train_dataloader)
 
