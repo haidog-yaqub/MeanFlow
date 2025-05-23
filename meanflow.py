@@ -41,8 +41,11 @@ class MeanFlow:
         image_size=32,
         num_classes=10,
         flow_ratio=0.50,
-        cfg_ratio=0.20,
+        # time distribution, mu, sigma
+        time_dist=['lognorm', -0.4, 1.0],
+        cfg_ratio=0.10,
         cfg_scale=2.0,
+        # experimental
         cfg_uncond='u'
     ):
         super().__init__()
@@ -51,22 +54,38 @@ class MeanFlow:
         self.num_classes = num_classes
         self.use_cond = num_classes is not None
         self.flow_ratio = flow_ratio
+        self.time_dist = time_dist
         self.cfg_ratio = cfg_ratio
         self.w = cfg_scale
         self.cfg_uncond = cfg_uncond
 
-    def loss(self, model, x, c=None):
-        batch_size = x.shape[0]
-        device = x.device
+    # fix: r should be always not larger than t
+    def sample_t_r(self, batch_size, device):
+        if self.time_dist[0] == 'uniform':
+            samples = np.random.rand(batch_size, 2).astype(np.float32)
 
-        t_np = np.random.rand(batch_size).astype(np.float32)
-        r_np = np.random.rand(batch_size).astype(np.float32)
+        elif self.time_dist[0] == 'lognorm':
+            mu, sigma = self.time_dist[-2], self.time_dist[-1]
+            normal_samples = np.random.randn(batch_size, 2).astype(np.float32) * sigma + mu
+            samples = 1 / (1 + np.exp(-normal_samples))  # Apply sigmoid
+
+        # Assign t = max, r = min, for each pair
+        t_np = np.maximum(samples[:, 0], samples[:, 1])
+        r_np = np.minimum(samples[:, 0], samples[:, 1])
+
         num_selected = int(self.flow_ratio * batch_size)
         indices = np.random.permutation(batch_size)[:num_selected]
         r_np[indices] = t_np[indices]
 
         t = torch.tensor(t_np, device=device)
         r = torch.tensor(r_np, device=device)
+        return t, r
+
+    def loss(self, model, x, c=None):
+        batch_size = x.shape[0]
+        device = x.device
+
+        t, r = self.sample_t_r(batch_size, device)
 
         t_ = rearrange(t, "b -> b 1 1 1")
         r_ = rearrange(r, "b -> b 1 1 1")
