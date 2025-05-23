@@ -67,7 +67,7 @@ class DiTBlock(nn.Module):
         super().__init__()
         self.norm1 = RMSNorm(dim)
         self.attn = Attention(dim, num_heads=num_heads, qkv_bias=True, qk_norm=True, norm_layer=RMSNorm)
-        # flash attn incompatible with jvp
+        # flasth attn can not be used with jvp
         self.attn.fused_attn = False
         self.norm2 = RMSNorm(dim)
         mlp_dim = int(dim * mlp_ratio)
@@ -125,8 +125,8 @@ class MFDiT(nn.Module):
         self.num_classes = num_classes
 
         self.x_embedder = PatchEmbed(input_size, patch_size, in_channels, dim)
-        self.t_embedder = TimestepEmbedder(dim//2)
-        self.r_embedder = TimestepEmbedder(dim//2)
+        self.t_embedder = TimestepEmbedder(dim)
+        self.r_embedder = TimestepEmbedder(dim)
 
         self.use_cond = num_classes is not None
         self.y_embedder = LabelEmbedder(num_classes, dim) if self.use_cond else None
@@ -207,7 +207,10 @@ class MFDiT(nn.Module):
 
         t = self.t_embedder(t)                   # (N, D)
         r = self.r_embedder(r)
-        t = torch.cat([t, r], dim=-1)
+        # t = torch.cat([t, r], dim=-1)
+        t = t + r
+
+        # condition
         c = t
         if self.use_cond:
             y = self.y_embedder(y)               # (N, D)
