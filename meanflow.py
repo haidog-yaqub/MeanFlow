@@ -46,7 +46,8 @@ class MeanFlow:
         cfg_ratio=0.10,
         cfg_scale=2.0,
         # experimental
-        cfg_uncond='u'
+        cfg_uncond='u',
+        jvp_api='autograd',
     ):
         super().__init__()
         self.channels = channels
@@ -57,7 +58,17 @@ class MeanFlow:
         self.time_dist = time_dist
         self.cfg_ratio = cfg_ratio
         self.w = cfg_scale
+
         self.cfg_uncond = cfg_uncond
+        self.jvp_api = jvp_api
+
+        assert jvp_api in ['funtorch', 'autograd'], "jvp_api must be 'funtorch' or 'autograd'"
+        if jvp_api == 'funtorch':
+            self.jvp_fn = torch.func.jvp
+            self.create_graph = False
+        elif jvp_api == 'autograd':
+            self.jvp_fn = torch.autograd.functional.jvp
+            self.create_graph = True
 
     # fix: r should be always not larger than t
     def sample_t_r(self, batch_size, device):
@@ -112,17 +123,20 @@ class MeanFlow:
             cfg_mask = rearrange(r, "b -> b 1 1 1").bool()
             v_hat = torch.where(cfg_mask, v, v_hat)
 
+        # forward pass
+        # u = model(z, t, r, y=c)
         model_partial = partial(model, y=c)
-        u, dudt = torch.autograd.functional.jvp(
+        jvp_args = (
             lambda z, t, r: model_partial(z, t, r),
-            # model,
             (z, t, r),
             (v_hat, torch.ones_like(t), torch.zeros_like(r)),
-            create_graph=True
         )
 
-        # u = model(z, t, r)
-        # u_tgt = v
+        if self.create_graph:
+            u, dudt = self.jvp_fn(*jvp_args, create_graph=True)
+        else:
+            u, dudt = self.jvp_fn(*jvp_args)
+
         u_tgt = v_hat - (t_ - r_) * dudt
 
         error = u - stopgrad(u_tgt)
