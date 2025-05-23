@@ -24,7 +24,8 @@
 - [x] Implement basic training and inference
 - [x] Enable multi-GPU training via 🤗 Accelerate
 - [x] Add support for Classifier-Free Guidance (CFG)
-- [ ] Add tricks like improved CFG mentioned in Appendix 
+- [ ] Add tricks like improved CFG mentioned in Appendix
+- [ ] Improve code clarity and structure, following 🤗 Diffusers style  
 - [ ] Integrate latent image representation support
 - [ ] Deploy interactive demo on Hugging Face Spaces
 - [ ] Extend to additional modalities (e.g., audio, speech)
