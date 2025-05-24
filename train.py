@@ -1,4 +1,4 @@
-from dit import MFDiT
+from models.dit import MFDiT
 import torch
 import torchvision
 from torchvision import transforms as T
@@ -15,6 +15,7 @@ if __name__ == '__main__':
     device = "cuda" if torch.cuda.is_available() else "cpu"
     batch_size = 48
     os.makedirs('images', exist_ok=True)
+    os.makedirs('checkpoints', exist_ok=True)
     accelerator = Accelerator(mixed_precision='fp16')
 
     dataset = torchvision.datasets.CIFAR10(
@@ -116,3 +117,7 @@ if __name__ == '__main__':
                     save_image(log_img, img_save_path)
                 accelerator.wait_for_everyone()
                 model.train()
+                
+    if accelerator.is_main_process:
+        ckpt_path = f"checkpoints/step_{global_step}.pt"
+        accelerator.save(model_module.state_dict(), ckpt_path)
