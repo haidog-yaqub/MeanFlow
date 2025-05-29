@@ -24,9 +24,9 @@
 - [x] Implement basic training and inference
 - [x] Enable multi-GPU training via 🤗 Accelerate
 - [x] Add support for Classifier-Free Guidance (CFG)
+- [x] Integrate latent image representation support
 - [ ] Add tricks like improved CFG mentioned in Appendix
 - [ ] Improve code clarity and structure, following 🤗 Diffusers style  
-- [ ] Integrate latent image representation support
 - [ ] Deploy interactive demo on Hugging Face Spaces
 - [ ] Extend to additional modalities (e.g., audio, speech)
 - [ ] Explore integration with pre-trained models (e.g., via ControlNet, LoRA)
