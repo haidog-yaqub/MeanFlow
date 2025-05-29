@@ -181,19 +181,22 @@ class MeanFlow:
         return loss, mse_val
 
     @torch.no_grad()
-    def sample_each_class(self, model, n_per_class,
+    def sample_each_class(self, model, n_per_class, classes=None,
+                          # tbd: multi-step sampling
                           sample_steps=1, device='cuda'):
         model.eval()
 
-        c = torch.arange(self.num_classes, device=device).repeat(n_per_class)
-        z = torch.randn(self.num_classes * n_per_class, self.channels,
+        if classes is None:
+            c = torch.arange(self.num_classes, device=device).repeat(n_per_class)
+        else:
+            c = torch.tensor(classes, device=device).repeat(n_per_class)
+        z = torch.randn(c.shape[0], self.channels,
                         self.image_size, self.image_size, device=device)
 
         t = torch.ones((c.shape[0],), device=c.device)
         r = torch.zeros((c.shape[0],), device=c.device)
 
         z = z - model(z, t, r, c)
-
         z = self.normer.unnorm(z)
 
         return z
