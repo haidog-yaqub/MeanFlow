@@ -71,6 +71,7 @@ class MeanFlow:
         # time distribution, mu, sigma
         time_dist=['lognorm', -0.4, 1.0],
         cfg_ratio=0.10,
+        # set scale as none to disable CFG distill
         cfg_scale=2.0,
         # experimental
         cfg_uncond='u',
@@ -148,7 +149,7 @@ class MeanFlow:
                 v_hat = self.w * v + (1 - self.w) * u_t
                 if self.cfg_uncond == 'v':
                     # In the unconditional case, v = w * v + (1 - w) * u,
-                    # so if we're choosing to use 'v' for uncond paths, we can just keep v.
+                    # so if we're choosing to use 'v' for uncond settings, we can just keep v.
                     # Apply this only to the unconditional samples indicated by cfg_mask.
                     cfg_mask = rearrange(cfg_mask, "b -> b 1 1 1").bool()
                     v_hat = torch.where(cfg_mask, v, v_hat)
