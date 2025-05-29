@@ -137,21 +137,23 @@ class MeanFlow:
         z = (1 - t_) * x + t_ * e
         v = e - x
 
-        if self.w is not None:
+        if c is not None:
+            assert self.cfg_ratio is not None
             uncond = torch.ones_like(c) * self.num_classes
-            with torch.no_grad():
-                u_t = model(z, t, t, uncond)
-            v_hat = self.w * v + (1 - self.w) * u_t
-        else:
-            v_hat = v
-
-        cfg_mask = torch.rand_like(c.float()) < self.cfg_ratio
-        c = torch.where(cfg_mask, uncond, c)
-
-        if self.cfg_uncond == 'v':
-            # as v = wv - (1-w)v = wv - (1-w)u in the unconditional case, should we directly use v instead?
-            cfg_mask = rearrange(r, "b -> b 1 1 1").bool()
-            v_hat = torch.where(cfg_mask, v, v_hat)
+            cfg_mask = torch.rand_like(c.float()) < self.cfg_ratio
+            c = torch.where(cfg_mask, uncond, c)
+            if self.w is not None:
+                with torch.no_grad():
+                    u_t = model(z, t, t, uncond)
+                v_hat = self.w * v + (1 - self.w) * u_t
+                if self.cfg_uncond == 'v':
+                    # In the unconditional case, v = w * v + (1 - w) * u,
+                    # so if we're choosing to use 'v' for uncond paths, we can just keep v.
+                    # Apply this only to the unconditional samples indicated by cfg_mask.
+                    cfg_mask = rearrange(cfg_mask, "b -> b 1 1 1").bool()
+                    v_hat = torch.where(cfg_mask, v, v_hat)
+            else:
+                v_hat = v
 
         # forward pass
         # u = model(z, t, r, y=c)
