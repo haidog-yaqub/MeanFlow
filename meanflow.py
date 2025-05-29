@@ -33,6 +33,7 @@ class Normalizer:
 
     def unnorm(self, x):
         if self.mode == 'minmax':
+            x = x.clip(-1, 1)
             return (x + 1) * 0.5
         elif self.mode == 'mean_std':
             return x * self.std.to(x.device) + self.mean.to(x.device)
@@ -193,6 +194,6 @@ class MeanFlow:
 
         z = z - model(z, t, r, c)
 
-        z = self.normer.unnorm(z.clip(-1, 1))
+        z = self.normer.unnorm(z)
 
         return z
