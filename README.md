@@ -6,6 +6,7 @@
 
 💬 Contributions and feedback are very welcome — feel free to open an issue or pull request if you spot something or have ideas!
 
+🛠️ This codebase is kept as clean and minimal as possible for easier integration into your own projects — thus, frameworks like Wandb are intentionally excluded.
 
 ## Examples
 **MNIST** -- 10k training steps, 1-step sample result:
@@ -27,9 +28,7 @@
 - [x] Integrate latent image representation support
 - [ ] Add tricks like improved CFG mentioned in Appendix
 - [ ] Improve code clarity and structure, following 🤗 Diffusers style  
-- [ ] Deploy interactive demo on Hugging Face Spaces
 - [ ] Extend to additional modalities (e.g., audio, speech)
-- [ ] Explore integration with pre-trained models (e.g., via ControlNet, LoRA)
       
 ## Known Issues (PyTorch)
 - `jvp` is incompatible with Flash Attention and likely also with Triton, Mamba, and similar libraries.  
