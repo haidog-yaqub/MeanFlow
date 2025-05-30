@@ -30,9 +30,6 @@
 - [ ] Improve code clarity and structure, following 🤗 Diffusers style  
 - [ ] Extend to additional modalities (e.g., audio, speech)
 
-## Notes
-- It is expected that the loss may plateau in the later stages of training, as observed in related studies, such as those on consistency models like sCMs.
-  
 ## Known Issues (PyTorch)
 - `jvp` is incompatible with Flash Attention and likely also with Triton, Mamba, and similar libraries.  
 - `jvp` significantly increases GPU memory usage, even when using `torch.utils.checkpoint`.
