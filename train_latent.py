@@ -1,4 +1,4 @@
-from diffusers import AutoencoderDC
+from diffusers import AutoencoderKL
 from models.dit import MFDiT
 import torch
 import torchvision
@@ -59,24 +59,23 @@ if __name__ == '__main__':
     train_dataloader = torch.utils.data.DataLoader(
         trainset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=8)
 
-    ae = AutoencoderDC.from_pretrained("mit-han-lab/dc-ae-f32c32-sana-1.0-diffusers",
-                                       torch_dtype=torch.float32).to(accelerator.device).eval()
-    latent_factor = 0.41407
+    vae = AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-mse").to(device)
+    latent_factor = 0.18215
 
     model = MFDiT(
-        input_size=8,
-        patch_size=1,
-        in_channels=32,
-        dim=512,
-        depth=16,
-        num_heads=8,
+        input_size=32,
+        patch_size=2,
+        in_channels=4,
+        dim=384,
+        depth=8,
+        num_heads=6,
         num_classes=1000,
     ).to(accelerator.device)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=0.0)
 
-    meanflow = MeanFlow(channels=32,
-                        image_size=8,
+    meanflow = MeanFlow(channels=4,
+                        image_size=32,
                         num_classes=1000,
                         normalizer=['mean_std', 0.0, 1/latent_factor],
                         flow_ratio=0.50,
@@ -86,7 +85,7 @@ if __name__ == '__main__':
                         # experimental
                         cfg_uncond='u')
 
-    model, ae, optimizer, train_dataloader = accelerator.prepare(model, ae, optimizer, train_dataloader)
+    model, vae, optimizer, train_dataloader = accelerator.prepare(model, vae, optimizer, train_dataloader)
 
     global_step = 0.0
     losses = 0.0
@@ -102,7 +101,7 @@ if __name__ == '__main__':
             c = c.to(accelerator.device)
             # encode to latent domain
             with torch.no_grad():
-                x = ae.encode(x).latent
+                x = vae.encode(x).latent_dist.sample()
 
             loss, mse_val = meanflow.loss(model, x, c)
 
@@ -140,7 +139,7 @@ if __name__ == '__main__':
                                                    classes=[157, 281, 1, 404, 805])
                     # decode back to pixel domain
                     with torch.no_grad():
-                        z = ae.decode(z).sample
+                        z = vae.decode(z).sample
                     z = z * 0.5 + 0.5
                     log_img = make_grid(z, nrow=10)
                     img_save_path = f"images/step_{global_step}.png"
