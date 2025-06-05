@@ -10,7 +10,7 @@
 
 ## 📢 Shameless Plug (Ad Spot)
 
-🚀 Check out our recent project on stylized text-to-speech: [🧢 CapSpeech](https://wanghelin1997.github.io/CapSpeech-demo/) — if you're interested in expressive TTS.
+🚀 Check out our recent project on stylized text-to-speech: [🧢 CapSpeech](https://wanghelin1997.github.io/CapSpeech-demo/).
 
 (Yes, this is an ad 😂)
 
