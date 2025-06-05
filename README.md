@@ -23,9 +23,9 @@
 
 ## 📢 Shameless Plug (Ad Spot)
 
-🚀 Check out our recent project on stylized text-to-speech: [🧢CapSpeech](https://wanghelin1997.github.io/CapSpeech-demo/)
+🚀 Check out our recent project on stylized text-to-speech: [🧢 CapSpeech](https://wanghelin1997.github.io/CapSpeech-demo/)
 
-(yes, this is an ad. But a cool one. 😎)
+(Yes, this is an ad—but a cool one. 😎)
 
 ## TODO
 - [x] Implement basic training and inference
