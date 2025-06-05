@@ -8,6 +8,12 @@
 
 🛠️ This codebase is kept as clean and minimal as possible for easier integration into your own projects — thus, frameworks like Wandb are intentionally excluded.
 
+## 📢 Shameless Plug (Ad Spot)
+
+🚀 Check out our recent project on stylized text-to-speech: [🧢 CapSpeech](https://wanghelin1997.github.io/CapSpeech-demo/)
+
+(Yes, this is an ad—but a cool one. 😎)
+
 ## Examples
 **MNIST** -- 10k training steps, 1-step sample result:
 
@@ -20,12 +26,6 @@
 **CIFAR-10** -- 200k training steps, 1-step CFG (w=2.0) sample result:
 
 ![CIFAR-10-cfg](assets/cfg_200k_cfg2.png)
-
-## 📢 Shameless Plug (Ad Spot)
-
-🚀 Check out our recent project on stylized text-to-speech: [🧢 CapSpeech](https://wanghelin1997.github.io/CapSpeech-demo/)
-
-(Yes, this is an ad—but a cool one. 😎)
 
 ## TODO
 - [x] Implement basic training and inference
