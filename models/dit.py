@@ -36,6 +36,7 @@ class TimestepEmbedder(nn.Module):
         return embedding
 
     def forward(self, t):
+        t = t*1000
         t_freq = self.timestep_embedding(t, self.nfreq)
         t_emb = self.mlp(t_freq)
         return t_emb
