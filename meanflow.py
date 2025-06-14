@@ -130,8 +130,8 @@ class MeanFlow:
 
         t, r = self.sample_t_r(batch_size, device)
 
-        t_ = rearrange(t, "b -> b 1 1 1")
-        r_ = rearrange(r, "b -> b 1 1 1")
+        t_ = rearrange(t, "b -> b 1 1 1").detach().clone()
+        r_ = rearrange(r, "b -> b 1 1 1").detach().clone()
 
         e = torch.randn_like(x)
         x = self.normer.norm(x)
@@ -182,21 +182,33 @@ class MeanFlow:
 
     @torch.no_grad()
     def sample_each_class(self, model, n_per_class, classes=None,
-                          # tbd: multi-step sampling
-                          sample_steps=1, device='cuda'):
+                          sample_steps=5, device='cuda'):
         model.eval()
 
         if classes is None:
             c = torch.arange(self.num_classes, device=device).repeat(n_per_class)
         else:
             c = torch.tensor(classes, device=device).repeat(n_per_class)
+
         z = torch.randn(c.shape[0], self.channels,
-                        self.image_size, self.image_size, device=device)
+                        self.image_size, self.image_size,
+                        device=device)
 
-        t = torch.ones((c.shape[0],), device=c.device)
-        r = torch.zeros((c.shape[0],), device=c.device)
+        t_vals = torch.linspace(1.0, 0.0, sample_steps + 1, device=device)
 
-        z = z - model(z, t, r, c)
+        # print(t_vals)
+
+        for i in range(sample_steps):
+            t = torch.full((z.size(0),), t_vals[i], device=device)
+            r = torch.full((z.size(0),), t_vals[i + 1], device=device)
+
+            # print(f"t: {t[0].item():.4f};  r: {r[0].item():.4f}")
+
+            t_ = rearrange(t, "b -> b 1 1 1").detach().clone()
+            r_ = rearrange(r, "b -> b 1 1 1").detach().clone()
+
+            v = model(z, t, r, c)
+            z = z - (t_-r_) * v
+
         z = self.normer.unnorm(z)
-
         return z
