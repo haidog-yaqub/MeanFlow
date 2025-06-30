@@ -75,7 +75,7 @@ class MeanFlow:
         # set scale as none to disable CFG distill
         cfg_scale=2.0,
         # experimental
-        cfg_uncond='u',
+        cfg_uncond='v',
         jvp_api='autograd',
     ):
         super().__init__()
@@ -149,9 +149,7 @@ class MeanFlow:
                     u_t = model(z, t, t, uncond)
                 v_hat = self.w * v + (1 - self.w) * u_t
                 if self.cfg_uncond == 'v':
-                    # In the unconditional case, v = w * v + (1 - w) * u,
-                    # so if we're choosing to use 'v' for uncond settings, we can just keep v.
-                    # Apply this only to the unconditional samples indicated by cfg_mask.
+                    # offical JAX repo uses original v for unconditional items
                     cfg_mask = rearrange(cfg_mask, "b -> b 1 1 1").bool()
                     v_hat = torch.where(cfg_mask, v, v_hat)
             else:
