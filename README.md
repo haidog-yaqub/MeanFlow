@@ -4,6 +4,9 @@
 
 😈 This repository offers an **unofficial PyTorch implementation** of the paper [_Mean Flows for One-step Generative Modeling_](https://arxiv.org/pdf/2505.13447), building upon [Just-a-DiT](https://github.com/ArchiMickey/Just-a-DiT) and [EzAudio](https://github.com/haidog-yaqub/EzAudio).
 
+### Sorry, I’ve been busy with other projects lately and haven’t updated this repo. 
+### Recently, [rcm](https://github.com/NVlabs/rcm) released JVP in Triton, which is insane — now you can use Flash Attention + MeanFlow.
+
 💬 Contributions and feedback are very welcome — feel free to open an issue or pull request if you spot something or have ideas!
 
 🛠️ This codebase is kept as clean and minimal as possible for easier integration into your own projects — thus, frameworks like Wandb are intentionally excluded.
@@ -33,8 +36,6 @@
 - [x] Add support for Classifier-Free Guidance (CFG)
 - [x] Integrate latent image representation support
 - [ ] Add tricks like improved CFG mentioned in Appendix
-- [ ] Improve code clarity and structure, following 🤗 Diffusers style  
-- [ ] Extend to additional modalities (e.g., audio, speech)
 
 ## Known Issues (PyTorch)
 - `jvp` is incompatible with Flash Attention and likely also with Triton, Mamba, and similar libraries.  
