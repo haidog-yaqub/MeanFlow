@@ -11,7 +11,7 @@
 
 ## 📢 News
 
-Sorry, I’ve been busy with other projects lately and haven’t updated this repo. 
+Sorry, I’ve been busy with other projects lately and haven’t updated this repo to support more functions.
 
 Recently, [rcm](https://github.com/NVlabs/rcm) released JVP in Triton, which is insane — now you can use Flash Attention + MeanFlow.
 
