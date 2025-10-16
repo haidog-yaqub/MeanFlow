@@ -4,18 +4,16 @@
 
 😈 This repository offers an **unofficial PyTorch implementation** of the paper [_Mean Flows for One-step Generative Modeling_](https://arxiv.org/pdf/2505.13447), building upon [Just-a-DiT](https://github.com/ArchiMickey/Just-a-DiT) and [EzAudio](https://github.com/haidog-yaqub/EzAudio).
 
-### Sorry, I’ve been busy with other projects lately and haven’t updated this repo. 
-### Recently, [rcm](https://github.com/NVlabs/rcm) released JVP in Triton, which is insane — now you can use Flash Attention + MeanFlow.
 
 💬 Contributions and feedback are very welcome — feel free to open an issue or pull request if you spot something or have ideas!
 
 🛠️ This codebase is kept as clean and minimal as possible for easier integration into your own projects — thus, frameworks like Wandb are intentionally excluded.
 
-## 📢 Shameless Plug (Ad Spot)
+## 📢 News
 
-🚀 Check out our recent project on stylized text-to-speech: [🧢 CapSpeech](https://wanghelin1997.github.io/CapSpeech-demo/).
+Sorry, I’ve been busy with other projects lately and haven’t updated this repo. 
 
-(Yes, this is an ad 😂)
+Recently, [rcm](https://github.com/NVlabs/rcm) released JVP in Triton, which is insane — now you can use Flash Attention + MeanFlow.
 
 ## Examples
 **MNIST** -- 10k training steps, 1-step sample result:
