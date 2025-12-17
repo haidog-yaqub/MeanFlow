@@ -96,6 +96,8 @@ if __name__ == '__main__':
 
     for e in range(n_epoch):
         model.train()
+        if hasattr(train_dataloader.sampler, "set_epoch"):
+            train_dataloader.sampler.set_epoch(e)
         for x, c in tqdm(train_dataloader):
             x = x.to(accelerator.device)
             c = c.to(accelerator.device)
