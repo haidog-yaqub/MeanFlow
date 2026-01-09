@@ -54,7 +54,7 @@ class LabelEmbedder(nn.Module):
 
 
 class RMSNorm(nn.Module):
-    def __init__(self, dim):
+    def __init__(self, dim, **kwargs):
         super().__init__()
         self.scale = dim**0.5
         self.g = nn.Parameter(torch.ones(1))
