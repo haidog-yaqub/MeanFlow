@@ -19,6 +19,8 @@ PyTorch implementation of [Mean Flows for One-step Generative Modeling](https://
 
 ## Usage
 
+`i-meanflow` (`meanflow.mode: "i-meanflow"`) is more stable and recommended for your projects. `meanflow` mode is kept for reference.
+
 ```bash
 pip install torch accelerate torchvision einops tqdm diffusers
 ```
