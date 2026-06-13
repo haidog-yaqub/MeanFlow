@@ -1,23 +1,36 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 import math
+from torch.nn.attention import sdpa_kernel, SDPBackend
 from timm.models.vision_transformer import PatchEmbed, Mlp
-from timm.models.vision_transformer import Attention
-import torch.nn.functional as F
-from einops import repeat, pack, unpack
-from torch.cuda.amp import autocast
+
+
+def expand_ada_params(param, x):
+    """Expand global (B, D) adaLN params to (B, T, D); pass through token-level params."""
+    if param.ndim == 2:
+        return param.unsqueeze(1)
+    return param
 
 
 def modulate(x, scale, shift):
-    return x * (1 + scale.unsqueeze(1)) + shift.unsqueeze(1)
+    """
+    Apply adaLN modulation.
+    x: (B, T, D)
+    scale, shift: (B, D) for global adaLN or (B, T, D) for token-level adaLN
+    """
+    scale = expand_ada_params(scale, x)
+    shift = expand_ada_params(shift, x)
+    return x * (1 + scale) + shift
 
 
 class TimestepEmbedder(nn.Module):
-    def __init__(self, dim, nfreq=256):
+    def __init__(self, dim, nfreq=256, scale=1000.0):
         super().__init__()
         self.mlp = nn.Sequential(nn.Linear(nfreq, dim), nn.SiLU(), nn.Linear(dim, dim))
         self.nfreq = nfreq
+        self.scale = scale
 
     @staticmethod
     def timestep_embedding(t, dim, max_period=10000):
@@ -36,10 +49,14 @@ class TimestepEmbedder(nn.Module):
         return embedding
 
     def forward(self, t):
-        t = t*1000
+        t = t * self.scale
         t_freq = self.timestep_embedding(t, self.nfreq)
         t_emb = self.mlp(t_freq)
         return t_emb
+
+    def initialize_weights(self):
+        nn.init.normal_(self.mlp[0].weight, std=0.02)
+        nn.init.normal_(self.mlp[2].weight, std=0.02)
 
 
 class LabelEmbedder(nn.Module):
@@ -53,24 +70,54 @@ class LabelEmbedder(nn.Module):
         return embeddings
 
 
-class RMSNorm(nn.Module):
-    def __init__(self, dim):
+class Attention(nn.Module):
+    def __init__(self, dim, num_heads=8, qkv_bias=True, qk_norm=True):
         super().__init__()
-        self.scale = dim**0.5
-        self.g = nn.Parameter(torch.ones(1))
+        assert dim % num_heads == 0
+        self.num_heads = num_heads
+        self.head_dim = dim // num_heads
+        self.scale = self.head_dim ** -0.5
 
-    def forward(self, x):
-        return F.normalize(x, dim=-1) * self.scale * self.g
+        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
+        self.q_norm = nn.RMSNorm(self.head_dim) if qk_norm else nn.Identity()
+        self.k_norm = nn.RMSNorm(self.head_dim) if qk_norm else nn.Identity()
+        self.proj = nn.Linear(dim, dim)
+
+    def _native_attention(self, q, k, v):
+        attn = (q @ k.transpose(-2, -1)) * self.scale
+        attn = attn.softmax(dim=-1)
+        return attn @ v
+
+    def _flash_attention(self, q, k, v):
+        with sdpa_kernel(SDPBackend.FLASH_ATTENTION):
+            return F.scaled_dot_product_attention(q, k, v, scale=self.scale)
+
+    def forward(self, x, use_flash_attention=False):
+        B, N, C = x.shape
+        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
+        q, k, v = qkv.unbind(0)
+        q = self.q_norm(q)
+        k = self.k_norm(k)
+
+        if (
+            use_flash_attention
+            and q.is_cuda
+            and q.dtype in (torch.float16, torch.bfloat16)
+        ):
+            x = self._flash_attention(q, k, v)
+        else:
+            x = self._native_attention(q, k, v)
+
+        x = x.transpose(1, 2).reshape(B, N, C)
+        return self.proj(x)
 
 
 class DiTBlock(nn.Module):
     def __init__(self, dim, num_heads, mlp_ratio=4.0):
         super().__init__()
-        self.norm1 = RMSNorm(dim)
-        self.attn = Attention(dim, num_heads=num_heads, qkv_bias=True, qk_norm=True, norm_layer=RMSNorm)
-        # flasth attn can not be used with jvp
-        self.attn.fused_attn = False
-        self.norm2 = RMSNorm(dim)
+        self.norm1 = nn.RMSNorm(dim, elementwise_affine=False)
+        self.attn = Attention(dim, num_heads=num_heads, qkv_bias=True, qk_norm=True)
+        self.norm2 = nn.RMSNorm(dim, elementwise_affine=False)
         mlp_dim = int(dim * mlp_ratio)
         approx_gelu = lambda: nn.GELU(approximate="tanh")
         self.mlp = Mlp(
@@ -78,14 +125,15 @@ class DiTBlock(nn.Module):
         )
         self.adaLN_modulation = nn.Sequential(nn.SiLU(), nn.Linear(dim, 6 * dim))
 
-    def forward(self, x, c):
+    def forward(self, x, c, use_flash_attention=False):
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = (
             self.adaLN_modulation(c).chunk(6, dim=-1)
         )
-        x = x + gate_msa.unsqueeze(1) * self.attn(
-            modulate(self.norm1(x), scale_msa, shift_msa)
+        x = x + expand_ada_params(gate_msa, x) * self.attn(
+            modulate(self.norm1(x), scale_msa, shift_msa),
+            use_flash_attention=use_flash_attention,
         )
-        x = x + gate_mlp.unsqueeze(1) * self.mlp(
+        x = x + expand_ada_params(gate_mlp, x) * self.mlp(
             modulate(self.norm2(x), scale_mlp, shift_mlp)
         )
         return x
@@ -94,13 +142,13 @@ class DiTBlock(nn.Module):
 class FinalLayer(nn.Module):
     def __init__(self, dim, patch_size, out_dim):
         super().__init__()
-        self.norm_final = RMSNorm(dim)
+        self.norm_final = nn.RMSNorm(dim, elementwise_affine=False)
         self.linear = nn.Linear(dim, patch_size * patch_size * out_dim)
         self.adaLN_modulation = nn.Sequential(nn.SiLU(), nn.Linear(dim, 2 * dim))
 
     def forward(self, x, c):
         shift, scale = self.adaLN_modulation(c).chunk(2, dim=-1)
-        x = modulate(self.norm_final(x), shift, scale)
+        x = modulate(self.norm_final(x), scale, shift)
         x = self.linear(x)
         return x
 
@@ -117,6 +165,7 @@ class MFDiT(nn.Module):
         mlp_ratio=4.0,
         num_register_tokens=4,
         num_classes=1000,
+        max_cfg=4.0,
     ):
         super().__init__()
         self.in_channels = in_channels
@@ -124,10 +173,12 @@ class MFDiT(nn.Module):
         self.patch_size = patch_size
         self.num_heads = num_heads
         self.num_classes = num_classes
+        self.max_cfg = max_cfg
 
         self.x_embedder = PatchEmbed(input_size, patch_size, in_channels, dim)
         self.t_embedder = TimestepEmbedder(dim)
         self.r_embedder = TimestepEmbedder(dim)
+        self.w_embedder = TimestepEmbedder(dim)
 
         self.use_cond = num_classes is not None
         self.y_embedder = LabelEmbedder(num_classes, dim) if self.use_cond else None
@@ -139,7 +190,8 @@ class MFDiT(nn.Module):
         self.blocks = nn.ModuleList([
             DiTBlock(dim, num_heads, mlp_ratio) for _ in range(depth)
         ])
-        self.final_layer = FinalLayer(dim, patch_size, self.out_channels)
+        self.final_layer_v = FinalLayer(dim, patch_size, self.out_channels)
+        self.final_layer_u = FinalLayer(dim, patch_size, self.out_channels)
 
         self.initialize_weights()
 
@@ -165,9 +217,9 @@ class MFDiT(nn.Module):
         if self.y_embedder is not None:
             nn.init.normal_(self.y_embedder.embedding.weight, std=0.02)
 
-        # Initialize timestep embedding MLP:
-        nn.init.normal_(self.t_embedder.mlp[0].weight, std=0.02)
-        nn.init.normal_(self.t_embedder.mlp[2].weight, std=0.02)
+        # Initialize timestep embedding MLP (t, r, w):
+        for embedder in (self.t_embedder, self.r_embedder, self.w_embedder):
+            embedder.initialize_weights()
 
         # Zero-out adaLN modulation layers in DiT blocks:
         for block in self.blocks:
@@ -175,10 +227,11 @@ class MFDiT(nn.Module):
             nn.init.constant_(block.adaLN_modulation[-1].bias, 0)
 
         # Zero-out output layers:
-        nn.init.constant_(self.final_layer.adaLN_modulation[-1].weight, 0)
-        nn.init.constant_(self.final_layer.adaLN_modulation[-1].bias, 0)
-        nn.init.constant_(self.final_layer.linear.weight, 0)
-        nn.init.constant_(self.final_layer.linear.bias, 0)
+        for final_layer in (self.final_layer_v, self.final_layer_u):
+            nn.init.constant_(final_layer.adaLN_modulation[-1].weight, 0)
+            nn.init.constant_(final_layer.adaLN_modulation[-1].bias, 0)
+            nn.init.constant_(final_layer.linear.weight, 0)
+            nn.init.constant_(final_layer.linear.bias, 0)
 
     def unpatchify(self, x):
         """
@@ -195,34 +248,42 @@ class MFDiT(nn.Module):
         imgs = x.reshape(shape=(x.shape[0], c, h * p, h * p))
         return imgs
 
-    def forward(self, x, t, r, y=None):
+    def forward(self, x, t, r, y=None, w=None, return_v=True, use_flash_attention=False):
         """
         Forward pass of DiT.
         x: (N, C, H, W) tensor of spatial inputs (images or latent representations of images)
         t: (N,) tensor of diffusion timesteps
+        r: (N,) tensor of auxiliary timesteps
         y: (N,) tensor of class labels
+        w: (N,) CFG scale; normalized by max_cfg before embedding. Defaults to 1.0.
+        return_v: if False, return u only; otherwise return (u, v)
+        use_flash_attention: if True, use flash SDPA when dtype/device allow
         """
-        H, W = x.shape[-2:]
-
         x = self.x_embedder(x) + self.pos_embed  # (N, T, D), where T = H * W / patch_size ** 2
+
+        if w is None:
+            w = torch.ones_like(t)
+        w = w / self.max_cfg
 
         t = self.t_embedder(t)                   # (N, D)
         r = self.r_embedder(r)
-        # t = torch.cat([t, r], dim=-1)
-        t = t + r
+        w = self.w_embedder(w)
+        t = t + r + w
 
-        # condition
         c = t
         if self.use_cond:
             y = self.y_embedder(y)               # (N, D)
-            c = c + y                                # (N, D)
+            c = c + y                            # (N, D)
 
-        for i, block in enumerate(self.blocks):
-            x = block(x, c)                      # (N, T, D)
+        for block in self.blocks:
+            x = block(x, c, use_flash_attention=use_flash_attention)
 
-        x = self.final_layer(x, c)                # (N, T, patch_size ** 2 * out_channels)
-        x = self.unpatchify(x)                   # (N, out_channels, H, W)
-        return x
+        u = self.unpatchify(self.final_layer_u(x, c))
+        if not return_v:
+            return u
+
+        v = self.unpatchify(self.final_layer_v(x, c))
+        return u, v
 
 
 # Positional embedding from:

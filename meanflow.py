@@ -43,7 +43,7 @@ def stopgrad(x):
     return x.detach()
 
 
-def adaptive_l2_loss(error, gamma=0.5, c=1e-3):
+def adaptive_l2_loss(error, gamma=0.0, c=1e-2):
     """
     Adaptive L2 loss: sg(w) * ||Δ||_2^2, where w = 1 / (||Δ||^2 + c)^p, p = 1 - γ
     Args:
@@ -56,7 +56,7 @@ def adaptive_l2_loss(error, gamma=0.5, c=1e-3):
     delta_sq = torch.mean(error ** 2, dim=(1, 2, 3), keepdim=False)
     p = 1.0 - gamma
     w = 1.0 / (delta_sq + c).pow(p)
-    loss = delta_sq  # ||Δ||^2
+    loss = delta_sq
     return (stopgrad(w) * loss).mean()
 
 
@@ -67,18 +67,16 @@ class MeanFlow:
         image_size=32,
         num_classes=10,
         normalizer=['minmax', None, None],
-        # mean flow settings
-        flow_ratio=0.50,
+        mode='i-meanflow',
         # time distribution, mu, sigma
         time_dist=['lognorm', -0.4, 1.0],
         cfg_ratio=0.10,
-        # set scale as none to disable CFG distill
-        cfg_scale=2.0,
-        # experimental
-        cfg_uncond='v',
-        jvp_api='autograd',
+        # scalar or [low, high] range; None disables CFG
+        cfg_scale=[1.0, 5.0],
+        cfg_scale_ratio=0.75,
+        adaptive_l2_gamma=0.0,
+        adaptive_l2_c=1e-2,
     ):
-        super().__init__()
         self.channels = channels
         self.image_size = image_size
         self.num_classes = num_classes
@@ -86,49 +84,61 @@ class MeanFlow:
 
         self.normer = Normalizer.from_list(normalizer)
 
-        self.flow_ratio = flow_ratio
+        assert mode in ('meanflow', 'i-meanflow')
+        self.mode = mode
         self.time_dist = time_dist
         self.cfg_ratio = cfg_ratio
-        self.w = cfg_scale
+        self.cfg_scale_ratio = cfg_scale_ratio
+        self.use_cfg_w = cfg_scale is not None
+        if self.use_cfg_w and isinstance(cfg_scale, (int, float)):
+            self.cfg_w_fixed = float(cfg_scale)
+            self.cfg_w_range = None
+        elif self.use_cfg_w:
+            self.cfg_w_fixed = None
+            self.cfg_w_range = (float(cfg_scale[0]), float(cfg_scale[1]))
+        else:
+            self.cfg_w_fixed = None
+            self.cfg_w_range = None
+        self.adaptive_l2_gamma = adaptive_l2_gamma
+        self.adaptive_l2_c = adaptive_l2_c
 
-        self.cfg_uncond = cfg_uncond
-        self.jvp_api = jvp_api
-
-        assert jvp_api in ['funtorch', 'autograd'], "jvp_api must be 'funtorch' or 'autograd'"
-        if jvp_api == 'funtorch':
-            self.jvp_fn = torch.func.jvp
-            self.create_graph = False
-        elif jvp_api == 'autograd':
-            self.jvp_fn = torch.autograd.functional.jvp
-            self.create_graph = True
-
-    # fix: r should be always not larger than t
-    def sample_t_r(self, batch_size, device):
+    def sample_t_r(self, batch_size, device, sample_cfg=True):
         if self.time_dist[0] == 'uniform':
             samples = np.random.rand(batch_size, 2).astype(np.float32)
 
         elif self.time_dist[0] == 'lognorm':
             mu, sigma = self.time_dist[-2], self.time_dist[-1]
             normal_samples = np.random.randn(batch_size, 2).astype(np.float32) * sigma + mu
-            samples = 1 / (1 + np.exp(-normal_samples))  # Apply sigmoid
+            samples = 1 / (1 + np.exp(-normal_samples))
 
-        # Assign t = max, r = min, for each pair
         t_np = np.maximum(samples[:, 0], samples[:, 1])
         r_np = np.minimum(samples[:, 0], samples[:, 1])
 
-        num_selected = int(self.flow_ratio * batch_size)
-        indices = np.random.permutation(batch_size)[:num_selected]
-        r_np[indices] = t_np[indices]
-
         t = torch.tensor(t_np, device=device)
         r = torch.tensor(r_np, device=device)
-        return t, r
+
+        if not self.use_cfg_w:
+            w = torch.ones(batch_size, device=device)
+        elif self.cfg_w_fixed is not None:
+            w = torch.full((batch_size,), self.cfg_w_fixed, device=device)
+        else:
+            low, high = self.cfg_w_range
+            if sample_cfg:
+                w = torch.ones(batch_size, device=device)
+                num = int(self.cfg_scale_ratio * batch_size)
+                if num > 0:
+                    indices = torch.randperm(batch_size, device=device)[:num]
+                    w[indices] = torch.empty(num, device=device).uniform_(low, high)
+            else:
+                w = torch.full((batch_size,), (low + high) / 2, device=device)
+
+        return t, r, w
 
     def loss(self, model, x, c=None):
         batch_size = x.shape[0]
         device = x.device
 
-        t, r = self.sample_t_r(batch_size, device)
+        t, r, w = self.sample_t_r(batch_size, device)
 
         t_ = rearrange(t, "b -> b 1 1 1").detach().clone()
         r_ = rearrange(r, "b -> b 1 1 1").detach().clone()
@@ -138,45 +148,67 @@ class MeanFlow:
 
         z = (1 - t_) * x + t_ * e
         v = e - x
+        v_hat = v
 
-        if c is not None:
-            assert self.cfg_ratio is not None
+        if c is not None and self.use_cfg_w:
             uncond = torch.ones_like(c) * self.num_classes
+            uncond_w = torch.ones_like(w)
             cfg_mask = torch.rand_like(c.float()) < self.cfg_ratio
             c = torch.where(cfg_mask, uncond, c)
-            if self.w is not None:
-                with torch.no_grad():
-                    u_t = model(z, t, t, uncond)
-                v_hat = self.w * v + (1 - self.w) * u_t
-                if self.cfg_uncond == 'v':
-                    # offical JAX repo uses original v for unconditional items
-                    cfg_mask = rearrange(cfg_mask, "b -> b 1 1 1").bool()
-                    v_hat = torch.where(cfg_mask, v, v_hat)
-            else:
-                v_hat = v
+            w = torch.where(cfg_mask, torch.ones_like(w), w)
+            w_ = rearrange(w, "b -> b 1 1 1")
 
-        # forward pass
-        # u = model(z, t, r, y=c)
-        model_partial = partial(model, y=c)
-        jvp_args = (
-            lambda z, t, r: model_partial(z, t, r),
-            (z, t, r),
-            (v_hat, torch.ones_like(t), torch.zeros_like(r)),
+            with torch.no_grad():
+                _, v_c = model(z, t, r, y=c, w=w)
+                _, v_uc = model(z, t, r, y=uncond, w=uncond_w)
+                v_hat = v + (1 - 1 / w_) * (v_c - v_uc)
+                # cfg_mask_ = rearrange(cfg_mask, "b -> b 1 1 1").bool()
+                # v_hat = torch.where(cfg_mask_, v, v_hat)  # redundant: w=1 on uncond => (1 - 1/w_)=0
+        else:
+            with torch.no_grad():
+                _, v_c = model(z, t, r, y=c, w=w)
+
+        with torch.no_grad():
+            model_partial = partial(
+                model, y=c, w=w, return_v=False, use_flash_attention=False
+            )
+            _, dudt = torch.autograd.functional.jvp(
+                model_partial,
+                (z, t, r),
+                (v_c, torch.ones_like(t), torch.zeros_like(r)),
+                create_graph=False,
+            )
+
+        u_p, v_p = model(z, t, r, y=c, w=w)
+
+        fm_loss = adaptive_l2_loss(
+            v_p - stopgrad(v_hat),
+            gamma=self.adaptive_l2_gamma,
+            c=self.adaptive_l2_c,
         )
 
-        if self.create_graph:
-            u, dudt = self.jvp_fn(*jvp_args, create_graph=True)
+        v_est = u_p + (t_ - r_) * stopgrad(dudt)
+
+        if self.mode == 'meanflow':
+            u_tgt = v_hat - (t_ - r_) * dudt
+            mf_loss = adaptive_l2_loss(
+                u_p - stopgrad(u_tgt),
+                gamma=self.adaptive_l2_gamma,
+                c=self.adaptive_l2_c,
+            )
         else:
-            u, dudt = self.jvp_fn(*jvp_args)
+            mf_loss = adaptive_l2_loss(
+                v_est - stopgrad(v_hat),
+                gamma=self.adaptive_l2_gamma,
+                c=self.adaptive_l2_c,
+            )
 
-        u_tgt = v_hat - (t_ - r_) * dudt
-
-        error = u - stopgrad(u_tgt)
-        loss = adaptive_l2_loss(error)
-        # loss = F.mse_loss(u, stopgrad(u_tgt))
-
-        mse_val = (stopgrad(error) ** 2).mean()
-        return loss, mse_val
+        mse_val = {
+            'fm_loss': stopgrad(fm_loss),
+            'mf_loss': stopgrad(mf_loss),
+            'mf_v_mse': (stopgrad(v_est - v_hat) ** 2).mean(),
+        }
+        return mf_loss + fm_loss, mse_val
 
     @torch.no_grad()
     def sample_each_class(self, model, n_per_class, classes=None,
@@ -188,25 +220,22 @@ class MeanFlow:
         else:
             c = torch.tensor(classes, device=device).repeat(n_per_class)
 
-        z = torch.randn(c.shape[0], self.channels,
-                        self.image_size, self.image_size,
-                        device=device)
+        z = torch.randn(
+            c.shape[0], self.channels, self.image_size, self.image_size, device=device
+        )
 
         t_vals = torch.linspace(1.0, 0.0, sample_steps + 1, device=device)
-
-        # print(t_vals)
+        _, _, w = self.sample_t_r(c.shape[0], device, sample_cfg=False)
 
         for i in range(sample_steps):
             t = torch.full((z.size(0),), t_vals[i], device=device)
             r = torch.full((z.size(0),), t_vals[i + 1], device=device)
 
-            # print(f"t: {t[0].item():.4f};  r: {r[0].item():.4f}")
+            t_ = rearrange(t, "b -> b 1 1 1")
+            r_ = rearrange(r, "b -> b 1 1 1")
 
-            t_ = rearrange(t, "b -> b 1 1 1").detach().clone()
-            r_ = rearrange(r, "b -> b 1 1 1").detach().clone()
-
-            v = model(z, t, r, c)
-            z = z - (t_-r_) * v
+            _, v = model(z, t, r, y=c, w=w)
+            z = z - (t_ - r_) * v
 
         z = self.normer.unnorm(z)
         return z

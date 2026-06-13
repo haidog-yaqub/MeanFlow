@@ -2,45 +2,129 @@
 
 # MeanFlow
 
-😈 This repository offers an **unofficial PyTorch implementation** of the paper [_Mean Flows for One-step Generative Modeling_](https://arxiv.org/pdf/2505.13447), building upon [Just-a-DiT](https://github.com/ArchiMickey/Just-a-DiT) and [EzAudio](https://github.com/haidog-yaqub/EzAudio).
+PyTorch implementation of [Mean Flows for One-step Generative Modeling](https://arxiv.org/pdf/2505.13447) (MeanFlow) and [Improved Mean Flows](https://arxiv.org/abs/2512.02012) (iMF).
 
+> **Note:** Unofficial implementation, based on the papers above and the official JAX repo [imeanflow](https://github.com/Lyy-iiis/imeanflow).
 
-💬 Contributions and feedback are very welcome — feel free to open an issue or pull request if you spot something or have ideas!
+Contributions and feedback are welcome — feel free to open an issue or pull request.
 
-🛠️ This codebase is kept as clean and minimal as possible for easier integration into your own projects — thus, frameworks like Wandb are intentionally excluded.
+## Updates
 
-## 📢 News
+**2026.06.13** — New features
 
-Sorry, I’ve been busy with other projects lately and haven’t updated this repo to support more functions.
+- MeanFlow and iMeanFlow training (`meanflow.mode`: `"meanflow"` / `"i-meanflow"`)
+- Dual-head DiT: `u` for MeanFlow, `v` for flow matching
+- CFG scale as model input with CFG distillation (`cfg_scale`; `None` to disable)
+- JVP under `no_grad` for `dudt`; separate gradient-enabled forward pass with Flash Attention for optimization
+- Config-based training for MNIST, CIFAR-10, and ImageNet latent, enabling cleaner experiment management and reproducible setups
+  
+## Usage
 
-Recently, [rcm](https://github.com/NVlabs/rcm) released JVP in Triton, which is insane — now you can use Flash Attention + MeanFlow.
+```bash
+pip install torch accelerate torchvision einops tqdm diffusers
+```
+
+```bash
+# single GPU
+python train.py --config configs/mnist.py
+
+# custom run name
+python train.py --config configs/cifar10.py --run_suffix exp1
+
+# multi-GPU
+accelerate launch --num_processes 2 train.py --config configs/mnist.py
+```
+
+| Config | Dataset |
+|--------|---------|
+| `configs/mnist.py` | MNIST |
+| `configs/cifar10.py` | CIFAR-10 |
+| `configs/imagenet_latent.py` | ImageNet (latent, VAE) |
+
+Common config fields: `n_steps`, `batch_size`, `grad_clip`, `meanflow.mode`, `meanflow.cfg_scale`.
+
+Training logs are saved to `logs/{run_name}/`:
+
+```
+logs/{run_name}/
+├── config.py
+├── train.log      # loss, FM/MF loss, MF_V_MSE, grad norm, LR
+├── images/
+└── ckpts/
+```
 
 ## Examples
-**MNIST** -- 10k training steps, 1-step sample result:
+
+**MNIST** — 10k steps, 1-step sample:
 
 ![MNIST](assets/mnist_10k.png)
 
-**MNIST** -- 6k training steps, 1-step CFG (w=2.0) sample result:
+**MNIST** — 6k steps, 1-step CFG (w=2.0):
 
 ![MNIST-cfg](assets/mnist_6k_cfg2.png)
 
-**CIFAR-10** -- 200k training steps, 1-step CFG (w=2.0) sample result:
+**CIFAR-10** — 200k steps, 1-step CFG (w=2.0):
 
 ![CIFAR-10-cfg](assets/cfg_200k_cfg2.png)
 
 ## TODO
-- [x] Implement basic training and inference
-- [x] Enable multi-GPU training via 🤗 Accelerate
-- [x] Add support for Classifier-Free Guidance (CFG)
-- [x] Integrate latent image representation support
-- [ ] Add tricks like improved CFG mentioned in Appendix
 
-## Known Issues (PyTorch)
-- `jvp` is incompatible with Flash Attention and likely also with Triton, Mamba, and similar libraries.  
-- `jvp` significantly increases GPU memory usage, even when using `torch.utils.checkpoint`.
-- CFG is implemented implicitly, leading to some limitations:
-  - The CFG scale is fixed at training time and cannot be adjusted during inference.  
-  - Negative prompts are not supported, such as "noise" or "low quality" commonly used in text-to-image diffusion models.
-  
-## 🌟 Like This Project?
-If you find this repo helpful or interesting, consider dropping a ⭐ — it really helps and means a lot!
+- [x] Basic training and inference
+- [x] Multi-GPU via Accelerate
+- [x] Classifier-Free Guidance
+- [x] Latent image training
+- [x] Improved MeanFlow (iMF)
+- [ ] Triton JVP + Flash Attention
+
+## Known Issues
+
+- `jvp` is incompatible with PyTorch native Flash Attention. A Triton kernel with JVP support is required.
+- JVP still adds overhead, but `no_grad` on the JVP step (for `dudt` only) reduces memory use significantly.
+
+## Acknowledgement
+
+Building upon [Just-a-DiT](https://github.com/ArchiMickey/Just-a-DiT) and [EzAudio](https://github.com/haidog-yaqub/EzAudio).
+
+iMF support is ported to PyTorch, building upon the official JAX repo [imeanflow](https://github.com/Lyy-iiis/imeanflow). Thanks to the authors for releasing their code and checkpoints.
+
+## Like This Project?
+
+If you find this repo helpful, consider dropping a ⭐ — it really helps!
+
+## Citation
+
+Please cite the original papers and this repository if you find this work useful.
+
+**MeanFlow** — [arXiv:2505.13447](https://arxiv.org/pdf/2505.13447)
+
+```bibtex
+@article{geng2025meanflow,
+  title={Mean Flows for One-step Generative Modeling},
+  author={Geng, Zhengyang and Shechtman, Eli and Kolter, J. Zico and He, Kaiming},
+  journal={arXiv preprint arXiv:2505.13447},
+  year={2025}
+}
+```
+
+**Improved MeanFlow (iMF)** — [arXiv:2512.02012](https://arxiv.org/abs/2512.02012)
+
+```bibtex
+@article{geng2025improved,
+  title={Improved Mean Flows: On the Challenges of Fastforward Generative Models},
+  author={Geng, Zhengyang and Lu, Yiyang and Wu, Zongze and Shechtman, Eli and Kolter, J. Zico and He, Kaiming},
+  journal={arXiv preprint arXiv:2512.02012},
+  year={2025}
+}
+```
+
+**This repository** — [haidog-yaqub/MeanFlow](https://github.com/haidog-yaqub/MeanFlow/tree/main)
+
+```bibtex
+@misc{meanflow_pytorch,
+  title={MeanFlow: Unofficial PyTorch Implementation},
+  author={haidog-yaqub},
+  year={2025},
+  publisher={GitHub},
+  url={https://github.com/haidog-yaqub/MeanFlow/tree/main}
+}
+```
