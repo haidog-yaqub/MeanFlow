@@ -15,7 +15,6 @@ PyTorch implementation of [Mean Flows for One-step Generative Modeling](https://
 - MeanFlow and iMF training (`meanflow.mode`: `"meanflow"` / `"i-meanflow"`)
 - Dual-head DiT: `u` for MeanFlow, `v` for flow matching
 - CFG scale as model input with CFG distillation (`cfg_scale`; `None` to disable)
-- Multi-GPU training via [Accelerate](https://huggingface.co/docs/accelerate)
 - JVP under `no_grad` for `dudt` only; separate grad-enabled forward pass for optimization
 - Config-based training for MNIST, CIFAR-10, and ImageNet latent
 
