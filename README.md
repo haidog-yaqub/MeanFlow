@@ -6,7 +6,7 @@ PyTorch implementation of [Mean Flows for One-step Generative Modeling](https://
 
 > **Note:** Unofficial implementation, based on the papers above and the official JAX repo [imeanflow](https://github.com/Lyy-iiis/imeanflow).
 
-Contributions and feedback are welcome — feel free to open an issue or pull request.
+> Contributions and feedback are welcome! Feel free to open an issue or pull request.
 
 ## Updates
 
