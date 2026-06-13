@@ -101,7 +101,7 @@ If you find this repo helpful, consider dropping a ⭐ — it really helps!
 
 Please cite the original papers and this repository if you find this work useful.
 
-**MeanFlow** — [arXiv:2505.13447](https://arxiv.org/pdf/2505.13447)
+**[MeanFlow](https://arxiv.org/pdf/2505.13447)**:
 
 ```bibtex
 @article{geng2025meanflow,
@@ -112,7 +112,7 @@ Please cite the original papers and this repository if you find this work useful
 }
 ```
 
-**Improved MeanFlow (iMF)** — [arXiv:2512.02012](https://arxiv.org/abs/2512.02012)
+**Improved MeanFlow ([iMF](https://arxiv.org/abs/2512.02012))**:
 
 ```bibtex
 @article{geng2025improved,
@@ -123,7 +123,7 @@ Please cite the original papers and this repository if you find this work useful
 }
 ```
 
-**This repository** — [haidog-yaqub/MeanFlow](https://github.com/haidog-yaqub/MeanFlow/tree/main)
+**This repository**: [haidog-yaqub/MeanFlow](https://github.com/haidog-yaqub/MeanFlow/tree/main)
 
 ```bibtex
 @misc{meanflow_pytorch,
