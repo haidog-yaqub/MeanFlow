@@ -112,7 +112,7 @@ Please cite the original papers and this repository if you find this work useful
 }
 ```
 
-**Improved MeanFlow ([iMF](https://arxiv.org/abs/2512.02012))**:
+**[Improved MeanFlow](https://arxiv.org/abs/2512.02012)**:
 
 ```bibtex
 @article{geng2025improved,
