@@ -12,12 +12,14 @@ PyTorch implementation of [Mean Flows for One-step Generative Modeling](https://
 
 **2026.06.13** — New features
 
-- MeanFlow and iMeanFlow training (`meanflow.mode`: `"meanflow"` / `"i-meanflow"`)
+- MeanFlow and iMF training (`meanflow.mode`: `"meanflow"` / `"i-meanflow"`)
 - Dual-head DiT: `u` for MeanFlow, `v` for flow matching
 - CFG scale as model input with CFG distillation (`cfg_scale`; `None` to disable)
-- JVP under `no_grad` for `dudt`; separate gradient-enabled forward pass with Flash Attention for optimization
-- Config-based training for MNIST, CIFAR-10, and ImageNet latent, enabling cleaner experiment management and reproducible setups
-  
+- Multi-GPU training via [Accelerate](https://huggingface.co/docs/accelerate)
+- JVP under `no_grad` for `dudt` only; separate grad-enabled forward pass for optimization
+- Config-based training for MNIST, CIFAR-10, and ImageNet latent
+- Gradient clipping, grad norm logging, bf16 mixed precision
+
 ## Usage
 
 ```bash
@@ -41,7 +43,7 @@ accelerate launch --num_processes 2 train.py --config configs/mnist.py
 | `configs/cifar10.py` | CIFAR-10 |
 | `configs/imagenet_latent.py` | ImageNet (latent, VAE) |
 
-Common config fields: `n_steps`, `batch_size`, `grad_clip`, `meanflow.mode`, `meanflow.cfg_scale`.
+Common config fields: `n_steps`, `batch_size`, `grad_clip`, `mixed_precision`, `meanflow.mode`, `meanflow.cfg_scale`.
 
 Training logs are saved to `logs/{run_name}/`:
 
@@ -78,8 +80,16 @@ logs/{run_name}/
 
 ## Known Issues
 
-- `jvp` is incompatible with PyTorch native Flash Attention. A Triton kernel with JVP support is required.
-- JVP still adds overhead, but `no_grad` on the JVP step (for `dudt` only) reduces memory use significantly.
+- `jvp` is currently incompatible with PyTorch's native Flash Attention (`scaled_dot_product_attention`).
+
+- Solution in this repo:
+  - Run the JVP pass under `no_grad` (for `dudt` only) without Flash Attention.
+  - Run a separate gradient-enabled forward pass for optimization with Flash Attention.
+
+- Other advanced solutions:
+  - Triton-based kernels with JVP support (e.g. [rcm](https://github.com/NVlabs/rcm)) may allow Flash Attention within JVP.
+  - Such kernels may offer additional speed and memory benefits, but are not currently supported in this repository.
+
 
 ## Acknowledgement
 
