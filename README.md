@@ -95,13 +95,13 @@ iMF support is ported to PyTorch, building upon the official JAX repo [imeanflow
 
 ## Like This Project?
 
-If you find this repo helpful, consider dropping a ⭐ — it really helps!
+If you find this repo helpful, consider dropping a ⭐, it really helps!
 
 ## Citation
 
-Please cite the original papers and this repository if you find this work useful.
+If you find this repository useful in your research or projects, please consider citing the original MeanFlow papers as well as this implementation.
 
-**[MeanFlow](https://arxiv.org/pdf/2505.13447)**:
+### MeanFlow
 
 ```bibtex
 @article{geng2025meanflow,
@@ -112,7 +112,7 @@ Please cite the original papers and this repository if you find this work useful
 }
 ```
 
-**[Improved MeanFlow](https://arxiv.org/abs/2512.02012)**:
+### Improved MeanFlow
 
 ```bibtex
 @article{geng2025improved,
@@ -123,14 +123,15 @@ Please cite the original papers and this repository if you find this work useful
 }
 ```
 
-**This repository**: [haidog-yaqub/MeanFlow](https://github.com/haidog-yaqub/MeanFlow/tree/main)
+### This Repository
+
+Repository: https://github.com/haidog-yaqub/MeanFlow
 
 ```bibtex
 @misc{meanflow_pytorch,
   title={MeanFlow: Unofficial PyTorch Implementation},
   author={haidog-yaqub},
   year={2025},
-  publisher={GitHub},
-  url={https://github.com/haidog-yaqub/MeanFlow/tree/main}
+  howpublished={\url{https://github.com/haidog-yaqub/MeanFlow}},
 }
 ```
