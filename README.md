@@ -18,7 +18,6 @@ PyTorch implementation of [Mean Flows for One-step Generative Modeling](https://
 - Multi-GPU training via [Accelerate](https://huggingface.co/docs/accelerate)
 - JVP under `no_grad` for `dudt` only; separate grad-enabled forward pass for optimization
 - Config-based training for MNIST, CIFAR-10, and ImageNet latent
-- Gradient clipping, grad norm logging, bf16 mixed precision
 
 ## Usage
 
@@ -87,9 +86,8 @@ logs/{run_name}/
   - Run a separate gradient-enabled forward pass for optimization with Flash Attention.
 
 - Other advanced solutions:
-  - Triton-based kernels with JVP support (e.g. [rcm](https://github.com/NVlabs/rcm)) may allow Flash Attention within JVP.
+  - Triton-based kernels with JVP support (e.g. [rcm](https://github.com/NVlabs/rcm)) will allow Flash Attention within JVP.
   - Such kernels may offer additional speed and memory benefits, but are not currently supported in this repository.
-
 
 ## Acknowledgement
 
