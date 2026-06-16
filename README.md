@@ -127,8 +127,6 @@ If you find this repository useful in your research or projects, please consider
 
 ### This Repository
 
-Repository: https://github.com/haidog-yaqub/MeanFlow
-
 ```bibtex
 @misc{meanflow_pytorch,
   title={MeanFlow: Unofficial PyTorch Implementation},
