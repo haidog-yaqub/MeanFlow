@@ -93,7 +93,7 @@ logs/{run_name}/
 
 Building upon [Just-a-DiT](https://github.com/ArchiMickey/Just-a-DiT) and [EzAudio](https://github.com/haidog-yaqub/EzAudio).
 
-iMF support is ported to PyTorch, building upon the official JAX repo [imeanflow](https://github.com/Lyy-iiis/imeanflow). Thanks to the authors for releasing their code and checkpoints.
+iMF support is based on the official JAX repo [imeanflow](https://github.com/Lyy-iiis/imeanflow). Thanks to the authors for releasing their code.
 
 ## Like This Project?
 
