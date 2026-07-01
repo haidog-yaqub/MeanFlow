@@ -234,8 +234,8 @@ class MeanFlow:
             t_ = rearrange(t, "b -> b 1 1 1")
             r_ = rearrange(r, "b -> b 1 1 1")
 
-            _, v = model(z, t, r, y=c, w=w)
-            z = z - (t_ - r_) * v
+            u, _ = model(z, t, r, y=c, w=w)
+            z = z - (t_ - r_) * u
 
         z = self.normer.unnorm(z)
         return z
