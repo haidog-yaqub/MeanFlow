@@ -95,6 +95,12 @@ Building upon [Just-a-DiT](https://github.com/ArchiMickey/Just-a-DiT) and [EzAud
 
 iMF support is based on the official JAX repo [imeanflow](https://github.com/Lyy-iiis/imeanflow). Thanks to the authors for releasing their code.
 
+## Research projects built on this repository
+
+- [MeanAudio](https://github.com/xiquan-li/MeanAudio): fast text-to-audio generation with Mean Flows. See [the paper](https://arxiv.org/abs/2508.06098).
+- [MeanVC](https://github.com/ASLP-lab/MeanVC): lightweight streaming zero-shot voice conversion. See [the paper](https://arxiv.org/abs/2510.08392).
+- [MeanFlow-TSE](https://github.com/rikishimizu/MeanFlow-TSE): one-step target speaker extraction. See [the paper](https://arxiv.org/abs/2512.18572).
+
 ## Like This Project?
 
 If you find this repo helpful, consider dropping a ⭐, it really helps!
